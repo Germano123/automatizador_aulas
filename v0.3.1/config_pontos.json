@@ -1,0 +1,57 @@
+{
+  "versao": "0.3.1",
+  "velocidade_mouse": 3,
+  "pontos": {
+    "titulo": {
+      "label": "Tipo de Aula (Título)",
+      "x": 450,
+      "y": 395,
+      "tipo": "clique",
+      "delay": 0.4
+    },
+    "conteudo": {
+      "label": "Conteúdo Previsto",
+      "x": 372,
+      "y": 591,
+      "tipo": "clique",
+      "delay": 0.4
+    },
+    "previsto": {
+      "label": "Campo Previsto",
+      "x": 900,
+      "y": 600,
+      "tipo": "clique",
+      "delay": 0.4
+    },
+    "scroll": {
+      "label": "Scroll do Modal",
+      "x": 1625,
+      "y": 295,
+      "tipo": "clique e arraste",
+      "delay": 0.533,
+      "x2": 1625,
+      "y2": 535
+    },
+    "metodologia": {
+      "label": "Metodologia (Lição de Casa)",
+      "x": 395,
+      "y": 640,
+      "tipo": "clique",
+      "delay": 0.4
+    },
+    "recursos": {
+      "label": "Recursos (Observação)",
+      "x": 395,
+      "y": 760,
+      "tipo": "clique",
+      "delay": 0.4
+    },
+    "salvar": {
+      "label": "Botão Salvar",
+      "x": 1560,
+      "y": 925,
+      "tipo": "clique",
+      "delay": 1.0
+    }
+  }
+}

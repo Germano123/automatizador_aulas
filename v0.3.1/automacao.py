@@ -22,7 +22,7 @@ def digitar_texto(texto, descricao="", log=None):
         log
     )
 
-    pyautogui.write(texto, interval=0.05)
+    pyautogui.write(texto, interval=config.INTERVALO_TEXTO_RAPIDO)
     time.sleep(config.DELAY_CAMPO)
 
 
@@ -35,7 +35,7 @@ def colar_texto(texto, descricao="", log=None):
     )
 
     pyperclip.copy(texto)
-    time.sleep(0.15)
+    time.sleep(config.DELAY_CLIPBOARD)
     pyautogui.hotkey("ctrl", "v")
     time.sleep(config.DELAY_CAMPO)
 
@@ -49,10 +49,10 @@ def clicar(posicao, descricao="", log=None):
     pyautogui.moveTo(
         posicao[0],
         posicao[1],
-        duration=0.25
+        duration=config.DURACAO_MOVIMENTO
     )
 
-    time.sleep(0.2)
+    time.sleep(config.DELAY_POS_MOVIMENTO)
 
     registrar(
         f"    → Clique em {descricao or posicao}",
@@ -61,6 +61,68 @@ def clicar(posicao, descricao="", log=None):
 
     pyautogui.click()
     time.sleep(config.DELAY_CAMPO)
+
+
+def executar_acao_ponto(chave, log=None):
+    """
+    Executa a ação configurada para o ponto (clique, duplo clique, clique direito ou arraste)
+    respeitando as coordenadas e o delay configurados dinamicamente no JSON.
+    """
+    pontos = config.obter_config_pontos()
+    ponto = pontos.get(chave)
+
+    if not ponto:
+        # Fallback para config.CAMPOS se a chave não estiver nos pontos
+        if chave in config.CAMPOS:
+            clicar(config.CAMPOS[chave], chave, log)
+        return
+
+    tipo = ponto.get("tipo", "clique")
+    x = int(ponto.get("x", 0))
+    y = int(ponto.get("y", 0))
+    delay = float(ponto.get("delay", config.DELAY_CAMPO))
+    label = ponto.get("label", chave)
+
+    if tipo == "clique e arraste":
+        x2 = int(ponto.get("x2", x))
+        y2 = int(ponto.get("y2", y))
+        arrastar_scroll_custom(x, y, x2, y2, delay, log)
+        return
+
+    registrar(f"    → Movendo para {label}: ({x}, {y})", log)
+    pyautogui.moveTo(x, y, duration=config.DURACAO_MOVIMENTO)
+    time.sleep(config.DELAY_POS_MOVIMENTO)
+
+    if tipo == "duplo clique":
+        registrar(f"    → Duplo clique em {label}", log)
+        pyautogui.doubleClick()
+    elif tipo == "clique direito":
+        registrar(f"    → Clique direito em {label}", log)
+        pyautogui.rightClick()
+    else:
+        registrar(f"    → Clique em {label}", log)
+        pyautogui.click()
+
+    time.sleep(delay)
+
+
+def arrastar_scroll_custom(x1, y1, x2, y2, delay, log=None):
+    registrar(f"    → Posicionando no scroll: ({x1}, {y1})", log)
+    pyautogui.moveTo(x1, y1, duration=config.DURACAO_MOVIMENTO)
+    time.sleep(config.DELAY_SCROLL_POSICIONAR)
+
+    registrar("    → mouseDown no scroll", log)
+    pyautogui.mouseDown(button="left")
+    time.sleep(config.DELAY_SCROLL_ETAPA)
+
+    registrar(f"    → Arrastando scroll até: ({x2}, {y2})", log)
+    pyautogui.moveTo(x2, y2, duration=config.DURACAO_SCROLL)
+
+    time.sleep(config.DELAY_SCROLL_ETAPA)
+    pyautogui.mouseUp(button="left")
+    registrar("    ✓ Scroll arrastado.", log)
+
+    time.sleep(delay)
 
 
 def preencher_campo(nome, valor, log=None):
@@ -85,25 +147,9 @@ def arrastar_scroll(log=None):
     Faz o arraste da barra de rolagem de forma explícita:
     move → mouseDown → arrasta → mouseUp.
     """
-    inicio = config.CAMPOS["scroll_start"]
-    fim = config.CAMPOS["scroll_end"]
-
-    registrar(f"    → Posicionando no scroll: {inicio}", log)
-    pyautogui.moveTo(inicio[0], inicio[1], duration=0.25)
-    time.sleep(0.3)
-
-    registrar(f"    → mouseDown no scroll", log)
-    pyautogui.mouseDown(button="left")
-    time.sleep(0.25)
-
-    registrar(f"    → Arrastando scroll até: {fim}", log)
-    pyautogui.moveTo(fim[0], fim[1], duration=0.9)
-
-    time.sleep(0.25)
-    pyautogui.mouseUp(button="left")
-    registrar("    ✓ Scroll arrastado.", log)
-
-    time.sleep(config.DELAY_SCROLL)
+    inicio = config.CAMPOS.get("scroll_start", (1625, 295))
+    fim = config.CAMPOS.get("scroll_end", (1625, 535))
+    arrastar_scroll_custom(inicio[0], inicio[1], fim[0], fim[1], config.DELAY_SCROLL, log)
 
 
 
@@ -156,12 +202,7 @@ def preencher_aula(aula, log=None):
     # =========================================================
 
     registrar("  [1/7] Preenchendo TÍTULO...", log)
-
-    clicar(
-        config.CAMPOS["titulo"],
-        "titulo",
-        log
-    )
+    executar_acao_ponto("titulo", log)
 
     primeiras_letras = titulo.strip()[:3]
 
@@ -172,7 +213,7 @@ def preencher_aula(aula, log=None):
 
     pyautogui.write(
         primeiras_letras,
-        interval=0.1
+        interval=config.INTERVALO_DIGITACAO
     )
 
     time.sleep(config.DELAY_CAMPO)
@@ -191,12 +232,7 @@ def preencher_aula(aula, log=None):
     # =========================================================
 
     registrar("  [2/7] Preenchendo CONTEÚDO...", log)
-
-    clicar(
-        config.CAMPOS["conteudo"],
-        "conteudo",
-        log
-    )
+    executar_acao_ponto("conteudo", log)
 
     colar_texto(
         conteudo,
@@ -209,32 +245,21 @@ def preencher_aula(aula, log=None):
     # =========================================================
 
     registrar("  [3/7] Clicando em PREVISTO...", log)
-
-    clicar(
-        config.CAMPOS["previsto"],
-        "previsto",
-        log
-    )
+    executar_acao_ponto("previsto", log)
 
     # =========================================================
     # 4. SCROLL
     # =========================================================
 
     registrar("  [4/7] Executando SCROLL...", log)
-
-    arrastar_scroll(log)
+    executar_acao_ponto("scroll", log)
 
     # =========================================================
     # 5. METODOLOGIA
     # =========================================================
 
     registrar("  [5/7] Preenchendo METODOLOGIA...", log)
-
-    clicar(
-        config.CAMPOS["metodologia"],
-        "metodologia",
-        log
-    )
+    executar_acao_ponto("metodologia", log)
 
     colar_texto(
         metodologia,
@@ -247,12 +272,7 @@ def preencher_aula(aula, log=None):
     # =========================================================
 
     registrar("  [6/7] Preenchendo RECURSOS...", log)
-
-    clicar(
-        config.CAMPOS["recursos"],
-        "recursos",
-        log
-    )
+    executar_acao_ponto("recursos", log)
 
     colar_texto(
         recursos,
@@ -265,12 +285,7 @@ def preencher_aula(aula, log=None):
     # =========================================================
 
     registrar("  [7/7] Clicando em SALVAR...", log)
-
-    clicar(
-        config.CAMPOS["salvar"],
-        "salvar",
-        log
-    )
+    executar_acao_ponto("salvar", log)
 
     time.sleep(config.DELAY_SALVAR)
 
