@@ -1,10 +1,10 @@
-# Automatizador de Planos de Aula
+# Automatizador de Planos de Aula — v0.3.2
 
 Robô assistido de RPA desenvolvido em Python ([PyAutoGUI](https://pyautogui.readthedocs.io/), [Tkinter](https://docs.python.org/3/library/tkinter.html) e [pyperclip](https://pypi.org/project/pyperclip/)) para acelerar o preenchimento de planos pedagógicos no Portal do Professor com simulação visual de periféricos.
 
 ---
 
-## Recursos da Versão Atual
+## Recursos da Versão Atual (v0.3.2)
 
 1. **Catálogo Hierárquico de Dados**:
    - Organização automática por **Curso** e **Unidade Curricular** sob a pasta `dados/`.

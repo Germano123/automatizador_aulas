@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 # ============================================================
-# CONFIGURAÇÃO DO AUTOMATIZADOR DE PLANOS DE AULA — v0.3.1
+# CONFIGURAÇÃO DO AUTOMATIZADOR DE PLANOS DE AULA — v0.3.2
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -167,7 +167,7 @@ def salvar_config_pontos(pontos, velocidade_mouse=None):
         atualizar_velocidade_mouse(velocidade_mouse)
 
     dados = {
-        "versao": "0.3.1",
+        "versao": "0.3.2",
         "velocidade_mouse": VELOCIDADE_MOUSE,
         "pontos": pontos,
     }
