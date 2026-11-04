@@ -1,0 +1,21 @@
+﻿tipo de aula;conteúdo previsto;lição de casa;observação;status;erro
+Teórica;Dia 1 — Introdução aos Sistemas Operacionais: conceito, histórico e evolução dos sistemas operacionais.;Pesquisar a linha do tempo dos principais sistemas operacionais.;SO — Dia 1, hora 1/4;preenchida;
+Teórica;Dia 1 — Estrutura e funções centrais do SO: abstração de hardware e gerência de recursos computacionais.;Explicar o papel do sistema operacional entre hardware e usuário.;SO — Dia 1, hora 2/4;preenchida;
+Teórica;Dia 1 — Kernel e espaço de memória: diferenças entre modo usuário (User Mode) e modo núcleo (Kernel Mode).;Diferenciar as operações executadas no espaço do usuário e do kernel.;SO — Dia 1, hora 3/4;preenchida;
+Prática;Dia 1 — Interfaces de interação: comparativo prático entre interfaces gráficas (GUI) e linhas de comando (CLI).;Praticar comandos básicos de navegação no prompt de comando.;SO — Dia 1, hora 4/4;preenchida;
+Teórica;Dia 2 — Arquitetura de Sistemas Operacionais: arquiteturas monolítica, microkernel, híbrida e em camadas.;Pesquisar quais sistemas operacionais utilizam microkernel e monolítico.;SO — Dia 2, hora 1/4;preenchida;
+Teórica;Dia 2 — Chamadas de sistema (System Calls): funcionamento das chamadas de sistema na comunicação com o hardware.;Exemplificar uma chamada de sistema no salvamento de um arquivo.;SO — Dia 2, hora 2/4;preenchida;
+Teórica;Dia 2 — Interrupções e exceções: tratamento de sinais de hardware, software e temporizadores.;Identificar eventos de hardware que geram interrupções no computador.;SO — Dia 2, hora 3/4;preenchida;
+Prática;Dia 2 — Identificação dos componentes de arquitetura do sistema operacional em execução.;Registrar em relatório as características do SO instalado na estação.;SO — Dia 2, hora 4/4;preenchida;
+Teórica;Dia 3 — Gerenciamento de Processos: conceito de processo, bloco de controle de processo (PCB) e ciclo de vida.;Mapear os estados de um processo (novo, pronto, executando, bloqueado, finalizado).;SO — Dia 3, hora 1/4;preenchida;
+Teórica;"Dia 3 — Concorrência e Threads: diferenças fundamentais entre processos e threads; multithreading e multicore.";Explicar as vantagens do uso de múltiplas threads em aplicações modernas.;SO — Dia 3, hora 2/4;preenchida;
+Teórica;Dia 3 — Escalonamento de CPU: algoritmos Round-Robin, FIFO/FCFS, SJF e prioridades de execução.;Comparar as características de algoritmos preentivos e não preentivos.;SO — Dia 3, hora 3/4;preenchida;
+Prática;Dia 3 — Monitoramento e controle de processos via Gerenciador de Tarefas e linha de comando.;Analisar o consumo de CPU e prioridade dos processos em execução.;SO — Dia 3, hora 4/4;preenchida;
+Teórica;Dia 4 — Gerenciamento de Memória: hierarquia de memória, endereçamento físico versus lógico.;Explicar o papel da memória principal e memórias de cache.;SO — Dia 4, hora 1/4;preenchida;
+Teórica;"Dia 4 — Alocação de memória: estratégias First-fit, Best-fit e Worst-fit; fragmentação interna e externa.";Resolver exercício comparando fragmentação interna e externa.;SO — Dia 4, hora 2/4;preenchida;
+Teórica;Dia 4 — Memória Virtual e Paginação: conceitos de páginas, molduras, tabela de páginas e faltas de página.;Descrever o mecanismo de paginação e o papel da MMU.;SO — Dia 4, hora 3/4;preenchida;
+Prática;Dia 4 — Configuração e análise de memória virtual e arquivo de paginação (swap) no sistema.;Avaliar o impacto da memória virtual no desempenho do computador.;SO — Dia 4, hora 4/4;preenchida;
+Teórica;Dia 5 — Sistemas de Arquivos: conceitos fundamentais de arquivos, diretórios, metadados e atributos.;Listar os principais atributos e permissões associados a um arquivo.;SO — Dia 5, hora 1/4;preenchida;
+Teórica;Dia 5 — Formatos e estruturas de arquivos: comparativo entre NTFS, FAT32, exFAT, ext4 e Btrfs.;Indicar qual sistema de arquivos é mais adequado para pendrives e servidores.;SO — Dia 5, hora 2/4;preenchida;
+Teórica;Dia 5 — Integridade e organização: journaling, tabelas de alocação de arquivos e fragmentação em disco.;Pesquisar o funcionamento do recurso de Journaling nos sistemas de arquivos modernos.;SO — Dia 5, hora 3/4;preenchida;
+Prática;Dia 5 — Formatação, particionamento e análise de sistemas de arquivos em mídias de armazenamento.;Praticar comandos de verificação de disco e visualização de partições.;SO — Dia 5, hora 4/4;preenchida;
