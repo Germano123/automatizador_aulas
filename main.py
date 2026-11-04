@@ -4,12 +4,13 @@ from pathlib import Path
 
 import pyautogui
 import pyperclip
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 import config
 
 
 # ============================================================
-# CONFIGURAÇÃO DO PYAutoGUI
+# CONFIGURAÇÃO DO PYAUTOGUI
 # ============================================================
 
 pyautogui.FAILSAFE = True
@@ -17,36 +18,35 @@ pyautogui.PAUSE = config.PAUSE
 
 
 # ============================================================
+# ESTADO DO NAVEGADOR
+# ============================================================
+
+PLAYWRIGHT = None
+BROWSER = None
+PAGE = None
+
+
+# ============================================================
 # FUNÇÕES BÁSICAS
 # ============================================================
 
 def escrever(texto):
-    """
-    Escreve texto utilizando clipboard + Ctrl+V.
-    Isso evita problemas com acentos e caracteres especiais.
-    """
+    """Escreve texto usando clipboard + Ctrl+V."""
     pyperclip.copy(str(texto or ""))
     pyautogui.hotkey("ctrl", "v")
 
 
 def clicar(posicao):
-    """
-    Clica em uma coordenada definida no config.py.
-    """
+    """Clica em uma coordenada definida no config.py."""
     pyautogui.click(posicao[0], posicao[1])
 
 
 def preencher_campo(nome, valor):
-    """
-    Clica no campo, seleciona o conteúdo existente
-    e insere o novo valor.
-    """
+    """Preenche um campo usando as coordenadas do config.py."""
     print(f"    Preenchendo: {nome}")
 
     clicar(config.CAMPOS[nome])
-
     pyautogui.hotkey("ctrl", "a")
-
     escrever(valor)
 
     time.sleep(config.DELAY_CAMPO)
@@ -57,9 +57,7 @@ def preencher_campo(nome, valor):
 # ============================================================
 
 def carregar_csv():
-    """
-    Carrega todas as aulas do arquivo aulas.csv.
-    """
+    """Carrega todas as aulas do arquivo configurado."""
     caminho = Path(config.CSV_PATH)
 
     if not caminho.exists():
@@ -72,23 +70,15 @@ def carregar_csv():
         encoding="utf-8-sig",
         newline=""
     ) as arquivo:
-
         return list(csv.DictReader(arquivo))
 
 
 # ============================================================
-# STATUS DO CSV
+# STATUS
 # ============================================================
 
 def atualizar_status(indice, status, erro=""):
-    """
-    Atualiza o status de uma aula no CSV.
-
-    IMPORTANTE:
-    Em MODO_TESTE esta função não será chamada para marcar
-    o registro como OK.
-    """
-
+    """Atualiza status e erro no CSV."""
     caminho = Path(config.CSV_PATH)
 
     with caminho.open(
@@ -96,7 +86,6 @@ def atualizar_status(indice, status, erro=""):
         encoding="utf-8-sig",
         newline=""
     ) as arquivo:
-
         registros = list(csv.DictReader(arquivo))
 
     if not registros:
@@ -118,80 +107,329 @@ def atualizar_status(indice, status, erro=""):
         encoding="utf-8-sig",
         newline=""
     ) as arquivo:
-
         writer = csv.DictWriter(
             arquivo,
             fieldnames=fieldnames
         )
-
         writer.writeheader()
         writer.writerows(registros)
 
 
 # ============================================================
-# LOCALIZAR BOTÃO EDITAR
+# PLAYWRIGHT — CONEXÃO COM O CHROME
 # ============================================================
 
-def localizar_editar():
+def conectar_navegador():
     """
-    Procura visualmente o botão Editar utilizando
-    a imagem definida em config.IMAGEM_EDITAR.
+    Conecta ao Chrome já aberto através do protocolo CDP.
+
+    Isso não é crawler: o Playwright apenas controla o DOM
+    da página que já está aberta no navegador.
     """
+    global PLAYWRIGHT, BROWSER, PAGE
 
-    print("  Procurando botão Editar...")
+    print("  Conectando ao navegador via Playwright/CDP...")
 
-    inicio = time.time()
+    PLAYWRIGHT = sync_playwright().start()
 
-    while time.time() - inicio < config.TIMEOUT_EDITAR:
+    try:
+        BROWSER = PLAYWRIGHT.chromium.connect_over_cdp(
+            config.PLAYWRIGHT_CDP_URL
+        )
+    except Exception as erro:
+        PLAYWRIGHT.stop()
+        PLAYWRIGHT = None
+
+        raise RuntimeError(
+            "Não foi possível conectar ao Chrome via CDP.\n"
+            f"Endereço configurado: {config.PLAYWRIGHT_CDP_URL}\n\n"
+            "Inicie o Chrome com depuração remota, por exemplo:\n"
+            'chrome.exe --remote-debugging-port=9222 '
+            '--user-data-dir="%TEMP%\\PortalProfessorAutomation"\n\n'
+            f"Erro original: {erro}"
+        )
+
+    paginas = []
+
+    for contexto in BROWSER.contexts:
+        paginas.extend(contexto.pages)
+
+    # Primeiro procura especificamente uma página do Portal.
+    portal_pages = [
+        pagina
+        for pagina in paginas
+        if config.PORTAL_DOMINIO.lower()
+        in pagina.url.lower()
+    ]
+
+    if portal_pages:
+        PAGE = portal_pages[0]
+    elif paginas:
+        PAGE = paginas[0]
+        print(
+            "  Aviso: nenhuma aba do Portal foi identificada ainda."
+        )
+    else:
+        raise RuntimeError(
+            "O navegador está conectado, mas nenhuma página foi encontrada."
+        )
+
+    print(f"  Página conectada: {PAGE.url}")
+
+    return PAGE
+
+
+def fechar_navegador():
+    """
+    Desconecta o Playwright sem fechar o Chrome do usuário.
+    """
+    global PLAYWRIGHT, BROWSER, PAGE
+
+    try:
+        if BROWSER:
+            BROWSER.close()
+    except Exception:
+        pass
+
+    try:
+        if PLAYWRIGHT:
+            PLAYWRIGHT.stop()
+    except Exception:
+        pass
+
+    PLAYWRIGHT = None
+    BROWSER = None
+    PAGE = None
+
+
+def selecionar_pagina_portal():
+    """
+    Procura novamente uma aba do Portal entre as páginas abertas.
+    """
+    global PAGE
+
+    paginas = []
+
+    for contexto in BROWSER.contexts:
+        paginas.extend(contexto.pages)
+
+    portal_pages = [
+        pagina
+        for pagina in paginas
+        if config.PORTAL_DOMINIO.lower()
+        in pagina.url.lower()
+    ]
+
+    if portal_pages:
+        PAGE = portal_pages[0]
+
+    return PAGE
+
+
+# ============================================================
+# PLAYWRIGHT — LOCALIZAR EDITAR
+# ============================================================
+
+def obter_botoes_editar():
+    """
+    Retorna os elementos Editar do DOM.
+
+    A estrutura observada no HTML do Portal é:
+
+        td.po-table-column-single-action
+          div.po-table-single-action
+            span
+              Editar
+
+    Portanto não usamos reconhecimento de imagem.
+    """
+    selecionar_pagina_portal()
+
+    if PAGE is None:
+        raise RuntimeError("Nenhuma página do Portal disponível.")
+
+    seletor = (
+        "td.po-table-column-single-action "
+        "div.po-table-single-action "
+        "span"
+    )
+
+    try:
+        PAGE.wait_for_selector(
+            seletor,
+            state="visible",
+            timeout=config.TIMEOUT_DOM * 1000
+        )
+    except PlaywrightTimeoutError:
+        return []
+
+    elementos = PAGE.locator(seletor)
+
+    resultado = []
+
+    for i in range(elementos.count()):
+        elemento = elementos.nth(i)
 
         try:
-            box = pyautogui.locateOnScreen(
-                config.IMAGEM_EDITAR,
-                confidence=config.CONFIANCA_IMAGEM
-            )
+            texto = elemento.inner_text().strip()
 
-        except Exception as erro:
+            if texto == "Editar":
+                resultado.append(elemento)
 
-            print(
-                f"  Erro ao procurar imagem: {erro}"
-            )
+        except Exception:
+            continue
 
-            return None
-
-        if box:
-
-            centro = pyautogui.center(box)
-
-            print(
-                f"  Editar encontrado em: {centro}"
-            )
-
-            return centro
-
-        time.sleep(0.5)
-
-    print("  Editar não encontrado.")
-
-    return None
+    return resultado
 
 
-# ============================================================
-# ABRIR EDIÇÃO
-# ============================================================
-
-def abrir_edicao():
+def linha_corresponde_a_aula(linha, aula):
     """
-    Localiza e clica no botão Editar.
+    Tenta identificar uma linha do Portal através de
+    data/turma/aula quando essas colunas existirem no CSV.
+
+    O CSV atual do projeto não possui essas colunas.
+    Nesse caso retorna False e o sistema utiliza o fallback
+    por posição.
     """
+    colunas = config.COLUNAS_IDENTIFICACAO
 
-    posicao = localizar_editar()
+    valores = []
 
-    if not posicao:
+    for chave, coluna_csv in colunas.items():
+        valor = str(aula.get(coluna_csv, "")).strip()
+
+        if not valor:
+            return False
+
+        valores.append(valor.lower())
+
+    try:
+        texto_linha = linha.inner_text().strip().lower()
+    except Exception:
         return False
 
-    print("  Clicando em Editar...")
+    return all(valor in texto_linha for valor in valores)
 
-    clicar(posicao)
+
+def localizar_editar(indice_registro, aula):
+    """
+    Localiza o botão Editar no DOM.
+
+    Estratégia 1:
+        se o CSV possuir data/turma/aula, tenta localizar
+        a linha correspondente.
+
+    Estratégia 2:
+        caso o CSV não tenha identificadores, usa o índice
+        do registro como fallback.
+
+    Para o CSV atual, o primeiro registro usa o primeiro
+    botão Editar encontrado no DOM.
+    """
+    print("  Procurando botão Editar no DOM...")
+
+    selecionar_pagina_portal()
+
+    if PAGE is None:
+        print("  ERRO: página do Portal não disponível.")
+        return None
+
+    # --------------------------------------------------------
+    # Estratégia 1 — identificação por linha
+    # --------------------------------------------------------
+
+    possui_identificadores = all(
+        str(aula.get(coluna, "")).strip()
+        for coluna in config.COLUNAS_IDENTIFICACAO.values()
+    )
+
+    if possui_identificadores:
+
+        print(
+            "  Tentando localizar a linha por data/turma/aula..."
+        )
+
+        linhas = PAGE.locator("tr")
+
+        for i in range(linhas.count()):
+
+            linha = linhas.nth(i)
+
+            try:
+                if not linha.is_visible():
+                    continue
+
+                if linha_corresponde_a_aula(
+                    linha,
+                    aula
+                ):
+                    editar = linha.locator(
+                        "td.po-table-column-single-action "
+                        "div.po-table-single-action "
+                        "span",
+                    ).filter(
+                        has_text="Editar"
+                    )
+
+                    if editar.count() > 0:
+                        print(
+                            f"  Linha correspondente encontrada: {i}"
+                        )
+                        return editar.first
+
+            except Exception:
+                continue
+
+    # --------------------------------------------------------
+    # Estratégia 2 — fallback por posição
+    # --------------------------------------------------------
+
+    print(
+        "  Identificadores de linha não disponíveis."
+    )
+
+    botoes = obter_botoes_editar()
+
+    if not botoes:
+        print(
+            "  Nenhum botão Editar encontrado no DOM."
+        )
+        return None
+
+    posicao = (
+        config.EDITAR_INDICE_FALLBACK
+        if len(botoes) > config.EDITAR_INDICE_FALLBACK
+        else 0
+    )
+
+    print(
+        f"  Usando Editar de índice {posicao}."
+    )
+
+    return botoes[posicao]
+
+
+def abrir_edicao(indice_registro, aula):
+    """
+    Localiza o Editar no DOM e dispara o clique.
+    """
+    elemento = localizar_editar(
+        indice_registro,
+        aula
+    )
+
+    if elemento is None:
+        return False
+
+    print("  Clicando em Editar pelo DOM...")
+
+    try:
+        elemento.click()
+    except Exception as erro:
+        print(
+            f"  Erro no clique DOM: {erro}"
+        )
+        return False
 
     time.sleep(config.DELAY_MODAL)
 
@@ -203,24 +441,14 @@ def abrir_edicao():
 # ============================================================
 
 def preencher_titulo(aula):
-    """
-    Preenche o campo Título.
-    """
+    """Preenche o campo Título."""
+    coluna = config.MAPEAMENTO_CSV["titulo"]
+    valor = aula.get(coluna, "")
 
-    valor = aula.get(
-        config.MAPEAMENTO_CSV["titulo"],
-        ""
-    )
-
-    if (
-        config.IGNORAR_CAMPOS_VAZIOS
-        and not valor
-    ):
+    if config.IGNORAR_CAMPOS_VAZIOS and not valor:
         return
 
-    print(
-        f"    título: {valor[:60]}"
-    )
+    print(f"    título: {valor[:60]}")
 
     preencher_campo(
         "titulo",
@@ -229,24 +457,14 @@ def preencher_titulo(aula):
 
 
 def preencher_conteudo(aula):
-    """
-    Preenche o campo Conteúdo.
-    """
+    """Preenche o campo Conteúdo."""
+    coluna = config.MAPEAMENTO_CSV["conteudo"]
+    valor = aula.get(coluna, "")
 
-    valor = aula.get(
-        config.MAPEAMENTO_CSV["conteudo"],
-        ""
-    )
-
-    if (
-        config.IGNORAR_CAMPOS_VAZIOS
-        and not valor
-    ):
+    if config.IGNORAR_CAMPOS_VAZIOS and not valor:
         return
 
-    print(
-        f"    conteúdo: {valor[:60]}"
-    )
+    print(f"    conteúdo: {valor[:60]}")
 
     preencher_campo(
         "conteudo",
@@ -255,16 +473,13 @@ def preencher_conteudo(aula):
 
 
 # ============================================================
-# BOTÃO PREVISTO
+# PREVISTO
 # ============================================================
 
 def clicar_previsto():
     """
-    Depois de preencher Conteúdo, clica no botão
-    'Previsto' para transferir o conteúdo para o
-    campo correspondente da plataforma.
+    Depois de preencher Conteúdo, clica em Previsto.
     """
-
     print("  Clicando em 'Previsto'...")
 
     clicar(
@@ -275,20 +490,14 @@ def clicar_previsto():
 
 
 # ============================================================
-# ROLAGEM DO MODAL
+# ROLAGEM
 # ============================================================
 
 def rolar_modal():
     """
-    Arrasta a barra de rolagem do modal.
-
-    Origem:
-        scroll_start
-
-    Destino:
-        scroll_end
+    Arrasta a barra de rolagem do modal de scroll_start
+    até scroll_end.
     """
-
     print("  Rolando o modal...")
 
     inicio = config.CAMPOS["scroll_start"]
@@ -314,24 +523,14 @@ def rolar_modal():
 # ============================================================
 
 def preencher_metodologia(aula):
-    """
-    Preenche o campo Metodologia após a rolagem.
-    """
+    """Preenche o campo Metodologia após a rolagem."""
+    coluna = config.MAPEAMENTO_CSV["metodologia"]
+    valor = aula.get(coluna, "")
 
-    valor = aula.get(
-        config.MAPEAMENTO_CSV["metodologia"],
-        ""
-    )
-
-    if (
-        config.IGNORAR_CAMPOS_VAZIOS
-        and not valor
-    ):
+    if config.IGNORAR_CAMPOS_VAZIOS and not valor:
         return
 
-    print(
-        f"    metodologia: {valor[:60]}"
-    )
+    print(f"    metodologia: {valor[:60]}")
 
     preencher_campo(
         "metodologia",
@@ -340,24 +539,14 @@ def preencher_metodologia(aula):
 
 
 def preencher_recursos(aula):
-    """
-    Preenche o campo Recursos após a rolagem.
-    """
+    """Preenche o campo Recursos após a rolagem."""
+    coluna = config.MAPEAMENTO_CSV["recursos"]
+    valor = aula.get(coluna, "")
 
-    valor = aula.get(
-        config.MAPEAMENTO_CSV["recursos"],
-        ""
-    )
-
-    if (
-        config.IGNORAR_CAMPOS_VAZIOS
-        and not valor
-    ):
+    if config.IGNORAR_CAMPOS_VAZIOS and not valor:
         return
 
-    print(
-        f"    recursos: {valor[:60]}"
-    )
+    print(f"    recursos: {valor[:60]}")
 
     preencher_campo(
         "recursos",
@@ -366,12 +555,12 @@ def preencher_recursos(aula):
 
 
 # ============================================================
-# PREENCHIMENTO COMPLETO DO MODAL
+# PREENCHIMENTO COMPLETO
 # ============================================================
 
 def preencher_modal(aula):
     """
-    Executa a sequência exata definida para a plataforma:
+    Sequência definida para o Portal:
 
     1. Título
     2. Conteúdo
@@ -380,45 +569,15 @@ def preencher_modal(aula):
     5. Metodologia
     6. Recursos
     """
-
     print()
     print("  Preenchendo modal...")
     print()
 
-    # --------------------------------------------------------
-    # ETAPA 1 — TÍTULO
-    # --------------------------------------------------------
-
     preencher_titulo(aula)
-
-    # --------------------------------------------------------
-    # ETAPA 2 — CONTEÚDO
-    # --------------------------------------------------------
-
     preencher_conteudo(aula)
-
-    # --------------------------------------------------------
-    # ETAPA 3 — PREVISTO
-    # --------------------------------------------------------
-
     clicar_previsto()
-
-    # --------------------------------------------------------
-    # ETAPA 4 — ROLAR MODAL
-    # --------------------------------------------------------
-
     rolar_modal()
-
-    # --------------------------------------------------------
-    # ETAPA 5 — METODOLOGIA
-    # --------------------------------------------------------
-
     preencher_metodologia(aula)
-
-    # --------------------------------------------------------
-    # ETAPA 6 — RECURSOS
-    # --------------------------------------------------------
-
     preencher_recursos(aula)
 
     print()
@@ -431,19 +590,13 @@ def preencher_modal(aula):
 
 def salvar():
     """
-    Salva o registro somente quando MODO_TESTE=False.
-
-    Durante o teste não haverá qualquer clique no botão
-    Salvar.
+    Salva somente quando MODO_TESTE=False.
     """
-
     if config.MODO_TESTE:
-
         print()
         print(
             "  [MODO TESTE] SALVAR NÃO SERÁ CLICADO."
         )
-
         return True
 
     print()
@@ -465,9 +618,7 @@ def salvar():
 # ============================================================
 
 def processar_aula(indice, aula):
-    """
-    Processa uma única aula.
-    """
+    """Processa uma única aula."""
 
     print()
     print("=" * 60)
@@ -475,19 +626,11 @@ def processar_aula(indice, aula):
     print("=" * 60)
 
     print(
-        f"Data:     {aula.get('data', '')}"
+        f"Tipo de aula: {aula.get('tipo de aula', '')}"
     )
 
     print(
-        f"Turma:    {aula.get('turma', '')}"
-    )
-
-    print(
-        f"Aula:     {aula.get('aula', '')}"
-    )
-
-    print(
-        f"Título:   {aula.get('titulo', '')}"
+        f"Conteúdo: {aula.get('conteúdo previsto', '')[:80]}"
     )
 
     print("=" * 60)
@@ -496,14 +639,13 @@ def processar_aula(indice, aula):
     # ABRIR EDIÇÃO
     # --------------------------------------------------------
 
-    if not abrir_edicao():
+    if not abrir_edicao(indice, aula):
 
         print(
             "  ERRO: botão Editar não encontrado."
         )
 
         if not config.MODO_TESTE:
-
             atualizar_status(
                 indice,
                 "ERRO",
@@ -557,7 +699,7 @@ def processar_aula(indice, aula):
 def main():
 
     print("=" * 60)
-    print(" AUTOMATIZADOR DE PLANOS DE AULA - v0.1")
+    print(" AUTOMATIZADOR DE PLANOS DE AULA - v0.2")
     print("=" * 60)
 
     # --------------------------------------------------------
@@ -568,10 +710,6 @@ def main():
     print("Carregando dados de aulas.csv...")
 
     aulas = carregar_csv()
-
-    # --------------------------------------------------------
-    # 2. IDENTIFICAR REGISTROS PENDENTES
-    # --------------------------------------------------------
 
     pendentes = [
         (indice, aula)
@@ -591,21 +729,15 @@ def main():
         f"Registros pendentes: {len(pendentes)}"
     )
 
-    # --------------------------------------------------------
-    # VERIFICAR SE EXISTEM REGISTROS
-    # --------------------------------------------------------
-
     if not pendentes:
-
         print()
         print(
             "Nenhuma aula pendente para processamento."
         )
-
         return
 
     # --------------------------------------------------------
-    # TESTE — PRIMEIRO REGISTRO PENDENTE
+    # PRIMEIRO REGISTRO — TESTE
     # --------------------------------------------------------
 
     indice, aula = pendentes[0]
@@ -616,26 +748,38 @@ def main():
     print("=" * 60)
 
     print(
-        f"Índice:   {indice}"
+        f"Índice:          {indice}"
     )
 
     print(
-        f"Data:     {aula.get('data', '')}"
+        f"Tipo de aula:    {aula.get('tipo de aula', '')}"
     )
 
     print(
-        f"Turma:    {aula.get('turma', '')}"
+        f"Conteúdo:        {aula.get('conteúdo previsto', '')[:100]}"
     )
 
     print(
-        f"Aula:     {aula.get('aula', '')}"
+        f"Lição de casa:   {aula.get('lição de casa', '')[:100]}"
     )
 
     print(
-        f"Título:   {aula.get('titulo', '')}"
+        f"Observação:      {aula.get('observação', '')[:100]}"
     )
 
     print("=" * 60)
+
+    # --------------------------------------------------------
+    # 2. CONECTAR AO NAVEGADOR
+    # --------------------------------------------------------
+
+    try:
+        conectar_navegador()
+    except Exception as erro:
+        print()
+        print("ERRO AO CONECTAR AO NAVEGADOR:")
+        print(erro)
+        return
 
     # --------------------------------------------------------
     # 3. DAR TEMPO PARA TROCAR PARA O PORTAL
@@ -685,16 +829,14 @@ def main():
         )
 
         if not config.MODO_TESTE:
-
             atualizar_status(
                 indice,
                 "ERRO",
                 str(erro)
             )
 
-    # --------------------------------------------------------
-    # FINAL
-    # --------------------------------------------------------
+    finally:
+        fechar_navegador()
 
     print()
     print("=" * 60)

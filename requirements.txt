@@ -2,3 +2,4 @@ pyautogui
 pyperclip
 Pillow
 opencv-python
+playwright
