@@ -1,29 +1,74 @@
-# Automatizador de Planos de Aula — v0.3.1
+# Automatizador de Planos de Aula
 
-## Objetivo
+Robô assistido de RPA desenvolvido em Python ([PyAutoGUI](https://pyautogui.readthedocs.io/), [Tkinter](https://docs.python.org/3/library/tkinter.html) e [pyperclip](https://pypi.org/project/pyperclip/)) para acelerar o preenchimento de planos pedagógicos no Portal do Professor com simulação visual de periféricos.
 
-Nesta versão, o usuário localiza manualmente a aula no Portal do Professor,
-clica em **Editar** e depois usa a GUI para inserir os dados da linha atual do CSV.
+---
 
-O programa não procura mais o botão Editar.
+## Recursos da Versão Atual
 
-## Correções desta versão
+1. **Catálogo Hierárquico de Dados**:
+   - Organização automática por **Curso** e **Unidade Curricular** sob a pasta `dados/`.
+   - Detecção dinâmica de novas turmas e UCs sem necessidade de alterar código-fonte.
+   - Menus suspensos (`ttk.Combobox`) para alternância instantânea de turmas.
 
-1. A linha atual do CSV é explicitamente lida e enviada para `preencher_aula()`.
-2. O terminal mostra os valores que serão inseridos.
-3. Cada campo faz:
-   - clique;
-   - espera;
-   - `Ctrl+A`;
-   - colagem via clipboard;
-   - espera.
-4. O arraste do scrollbar agora é explícito:
-   - `moveTo`;
-   - `mouseDown`;
-   - `moveTo` com duração;
-   - `mouseUp`.
-5. A GUI não é atualizada diretamente pela thread do PyAutoGUI; o resultado retorna à thread principal do Tkinter.
-6. O salvamento continua desativado enquanto `MODO_TESTE = True`.
+2. **Navegação Direta e Avanço Automático**:
+   - Salto direto por número de aula digitável: `AULA [ XX ] / YY [Ir]`.
+   - Avanço automático para a próxima aula após a confirmação da inserção.
+   - Navegação tradicional com botões `◀ ANTERIOR` e `PRÓXIMA ▶`.
+
+3. **Painel Visual de Configurações (`⚙ Configurações`)**:
+   - Listagem vertical de todos os pontos de tela (POIs).
+   - Configuração do **tipo de ação** por ponto (`clique`, `duplo clique`, `clique direito`, `clique e arraste`).
+   - Ajuste independente de **espera pós-comando** (delays) por etapa.
+   - **Controle geral de velocidade do mouse (1 a 10)** com seletor numérico.
+   - **Capturador interativo de coordenadas (🎯)**: conta 2 segundos para você posicionar o mouse sobre o elemento do portal e captura as coordenadas automaticamente.
+   - Persistência das configurações em `config_pontos.json` com botão de restauração de padrões.
+
+4. **Auto-Ocultação do Painel**:
+   - O overlay minimiza automaticamente ao clicar em **INSERIR ESTA AULA**, evitando sobrepor botões e campos do portal.
+   - Reaparece automaticamente no topo da tela logo após a conclusão da inserção.
+
+5. **Segurança e Integridade**:
+   - `FAILSAFE = True` ativo (mover o cursor para qualquer canto da tela aborta o robô imediatamente).
+   - Flag `MODO_TESTE` para preenchimento sem clique acidental no botão Salvar.
+   - Tratamento de concorrência com Excel e salvamento do status de cada aula diretamente no CSV.
+
+---
+
+## Estrutura de Pastas de Dados
+
+Os planos de aula estão organizados na seguinte estrutura:
+
+```text
+v0.3.1/dados/
+├── Almoxarife/
+│   ├── Fundamentos da Indústria 4.0 (12h)/
+│   │   └── aulas.csv
+│   └── Fundamentos de Tecnologia da Informação (20h)/
+│       └── aulas.csv
+├── Comprador/
+│   ├── Fundamentos da Indústria 4.0 (12h)/
+│   │   └── aulas.csv
+│   └── Fundamentos de Tecnologia da Informação (20h)/
+│       └── aulas.csv
+└── Operador de Computador/
+    ├── Ferramentas de produtividade e recursos web (80h)/
+    │   └── aulas.csv
+    ├── Fundamentos de Sistema Operacional (20h)/
+    │   └── aulas.csv
+    ├── Fundamentos de Tecnologia da Informação (40h)/
+    │   └── aulas.csv
+    └── Instalação de Aplicativos e Periféricos (20h)/
+        └── aulas.csv
+```
+
+### Formato Obrigatório dos Arquivos CSV
+* **Codificação**: `UTF-8-SIG` (BOM preservado para compatibilidade nativa com Excel).
+* **Delimitador**: Ponto e vírgula (`;`).
+* **Cabeçalho**: `tipo de aula;conteúdo previsto;lição de casa;observação`
+* **Tipos de Aula Suportados**: `Teórica`, `Prática`, `Produção`, `Apresentação` ou `Demonstração`.
+
+---
 
 ## Instalação
 
@@ -31,47 +76,33 @@ O programa não procura mais o botão Editar.
 pip install -r requirements.txt
 ```
 
-## Execução
+---
 
-Abra o Portal, localize a aula desejada e clique manualmente em **Editar**.
+## Como Executar
 
-Depois:
+1. Abra o navegador, faça login no Portal do Professor e acesse a turma desejada.
+2. Localize a aula na lista e clique manualmente em **Editar**.
+3. Inicie o automatizador:
 
 ```powershell
 python main.py
 ```
 
-Na GUI, escolha a aula correspondente e clique em:
+4. Na interface:
+   - Selecione o **Curso** e a **Unidade Curricular**.
+   - Se necessário, digite o número da aula no campo numérico e pressione **Enter** (ou use as setas `◀` / `▶`).
+   - Se estiver configurando pela primeira vez na tela, clique em **⚙ Configurações** para calibrar as posições com o botão 🎯.
+   - Clique em **INSERIR ESTA AULA** (ou pressione a tecla **Enter**).
+   - O painel ocultará, o robô preencherá o formulário, e a janela reaparecerá pronta na aula seguinte.
 
-**INSERIR ESTA AULA**
+---
 
-## Importante
+## Modo Teste
 
-As coordenadas em `config.py` são coordenadas absolutas da tela:
-
-```python
-CAMPOS = {
-    "titulo": ...,
-    "conteudo": ...,
-    "previsto": ...,
-    "metodologia": ...,
-    "recursos": ...,
-    "scroll_start": ...,
-    "scroll_end": ...,
-}
-```
-
-Se o mouse chegar ao campo mas o conteúdo não for inserido, verifique
-primeiramente se a coordenada realmente está dentro da área editável.
-
-## Modo teste
-
-O padrão é:
+Por padrão em `config.py`:
 
 ```python
 MODO_TESTE = True
 ```
 
-Portanto o programa preenche, mas não clica em Salvar.
-
-Não altere para `False` até o preenchimento estar validado.
+No modo de teste, o programa preenche os campos do modal, mas não clica em Salvar, permitindo validação visual dos dados antes do envio final.
