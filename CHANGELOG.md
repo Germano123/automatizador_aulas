@@ -23,11 +23,15 @@ Todas as alterações relevantes deste projeto estão documentadas neste arquivo
 - **Catálogo Estruturado de Unidades Curriculares**:
   - Organização dos arquivos CSV nas pastas `Almoxarife`, `Comprador` e `Operador de Computador`.
   - Geração de templates padronizados em `UTF-8-SIG` com delimitador `;`.
+- **Branch de Preservação Histórica (`legacy-history`)**:
+  - Descompactação das versões legadas (`v0.1.0`, `v0.2.0`, `v0.3.0` e `v0.3.1`) em commits dedicados na branch `legacy-history`, acompanhadas de suas respectivas tags Git.
+  - Remoção de todos os arquivos `.zip` legados e da pasta `v0.3.1/` da branch `main`, movendo todo o projeto para a raiz do repositório para manter a branch principal limpa e padronizada.
 - **Arquivo `.gitignore`**: Padronização para ignorar `__pycache__`, arquivos compilados `.pyc`, pastas de ambiente virtual `venv/` e configurações de IDEs.
 
 ### Modificado
 - **Aceleração da Automação**: Velocidade de movimentação do cursor aumentada em 50% (duração reduzida de 0.167s para 0.111s no nível padrão).
 - **Tratamento de Tipos de Aula**: Suporte aos tipos `Demonstração` e `Apresentação` com mapeamento e envio das 3 primeiras letras no modal.
+- **Migração para Raiz do Repositório**: Código-fonte e pasta `dados/` movidos da antiga subpasta `v0.3.1/` diretamente para a raiz do projeto, tornando o repositório enxuto e orientado a versionamento por tags Git.
 
 ---
 

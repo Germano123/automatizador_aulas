@@ -40,7 +40,7 @@ Robô assistido de RPA desenvolvido em Python ([PyAutoGUI](https://pyautogui.rea
 Os planos de aula estão organizados na seguinte estrutura:
 
 ```text
-v0.3.1/dados/
+dados/
 ├── Almoxarife/
 │   ├── Fundamentos da Indústria 4.0 (12h)/
 │   │   └── aulas.csv
