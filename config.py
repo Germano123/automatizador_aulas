@@ -1,34 +1,28 @@
+# ============================================================
+# CONFIGURAÇÃO DO AUTOMATIZADOR DE PLANOS DE AULA — v0.3
+# ============================================================
+
 CSV_PATH = "dados/aulas.csv"
 
-# Substitua por um recorte real do botão Editar.
-IMAGEM_EDITAR = "elementos/editar.png"
-CONFIANCA_IMAGEM = 0.85
+# ------------------------------------------------------------
+# GUI
+# ------------------------------------------------------------
+GUI_TITULO = "Automatizador — Planos de Aula"
+GUI_LARGURA = 360
+GUI_ALTURA = 285
+GUI_X = 20
+GUI_Y = 100
+GUI_SEMPRE_NO_TOPO = True
 
 # ------------------------------------------------------------
-# PLAYWRIGHT / NAVEGADOR
+# PYAutoGUI
 # ------------------------------------------------------------
-# O navegador precisa estar iniciado com depuração remota.
-# Exemplo no Chrome: --remote-debugging-port=9222
-PLAYWRIGHT_CDP_URL = "http://127.0.0.1:9222"
-PORTAL_DOMINIO = "portalsge.fiepi.com.br"
-TIMEOUT_DOM = 15
-
-# Estratégia para localizar a linha da aula.
-# O CSV atual não possui data/turma/aula, portanto, no teste,
-# usamos a posição do registro na lista de Editar.
-COLUNAS_IDENTIFICACAO = {
-    "data": "data",
-    "turma": "turma",
-    "aula": "aula",
-}
-
 PAUSE = 0.20
 DELAY_CAMPO = 0.20
 DELAY_MODAL = 1.0
 DELAY_SALVAR = 1.5
-TIMEOUT_EDITAR = 10
 
-# Primeiro teste: preencher, mas NÃO salvar.
+# Primeiro teste: preencher, mas NÃO salvar automaticamente.
 MODO_TESTE = True
 
 IGNORAR_CAMPOS_VAZIOS = True
@@ -44,12 +38,6 @@ CAMPOS = {
     "scroll_end": (1625, 535),
     "salvar": (1560, 925),
 }
-
-BOTAO_SALVAR = (1100, 750)
-
-# Índice do botão Editar quando o CSV não possui colunas
-# de identificação da linha. 0 = primeiro Editar.
-EDITAR_INDICE_FALLBACK = 0
 
 # campo_do_modal -> coluna_do_CSV
 MAPEAMENTO_CSV = {

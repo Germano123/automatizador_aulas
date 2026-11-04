@@ -1,134 +1,106 @@
-# Automatizador de Planos de Aula — v0.2
+# Automatizador de Planos de Aula — v0.3
 
-## Objetivo
+## Nova abordagem
 
-Automatizar o preenchimento dos planos de aula no Portal do Professor.
+A versão 0.3 abandona a tentativa de localizar automaticamente o botão **Editar** no Portal.
 
-A versão 0.2 substitui a procura visual do botão `Editar` por localização no DOM através do Playwright.
+O processo agora é deliberadamente híbrido:
 
-O preenchimento do modal continua usando as coordenadas configuradas no `config.py`, pois já foram medidas na interface real.
+1. O usuário abre o Portal do Professor.
+2. Localiza visualmente a aula correta.
+3. Clica manualmente em **Editar**.
+4. Usa o painel flutuante do automatizador para selecionar a aula correspondente.
+5. Clica em **INSERIR ESTA AULA**.
+6. O PyAutoGUI preenche o formulário aberto.
+7. O usuário confere o resultado e salva manualmente no Portal.
+8. O usuário clica em **PRÓXIMA** e repete o processo.
 
-## Arquitetura
+## GUI flutuante
 
-```text
-aulas.csv
-   ↓
-Python
-   ↓
-Playwright/CDP
-   ↓
-DOM do Portal → localizar "Editar"
-   ↓
-PyAutoGUI
-   ↓
-coordenadas do modal
-   ↓
-Título → Conteúdo → Previsto → Scroll → Metodologia → Recursos
-```
+A GUI foi construída com Tkinter e possui:
 
-Não é utilizado crawler. O Playwright apenas controla a página que já está aberta no navegador.
+- número da aula atual e total de aulas;
+- descrição/tipo da aula;
+- botão **Anterior**;
+- botão **Próxima**;
+- botão **Inserir esta aula**;
+- status da operação;
+- botão para ocultar o painel.
 
-## Instalação
+A janela utiliza `-topmost`, permanecendo acima do Portal e de outras aplicações. Ela não força o foco continuamente. Assim, é possível clicar e trabalhar no Portal enquanto o painel continua visível.
 
-```powershell
-python -m pip install -r requirements.txt
-```
+## Atalhos
 
-Como estamos conectando ao Chrome existente via CDP, não é necessário instalar outro navegador pelo Playwright.
+Quando o painel estiver com foco:
 
-## Iniciar o Chrome com depuração remota
+- `←` = aula anterior
+- `→` = próxima aula
+- `Enter` = inserir aula
 
-O Playwright precisa conseguir se conectar ao navegador existente.
-
-Feche as janelas do Chrome usadas no teste e abra uma instância dedicada com:
+## Dependências
 
 ```powershell
-chrome.exe --remote-debugging-port=9222 --user-data-dir="%TEMP%\PortalProfessorAutomation"
+pip install -r requirements.txt
 ```
 
-Se `chrome.exe` não estiver no PATH, use o caminho completo do executável do Chrome.
-
-Depois:
-
-1. Abra o Portal do Professor nessa janela.
-2. Faça login normalmente.
-3. Navegue até a página do plano de aula.
-4. Deixe a página aberta.
-
-A sessão desse perfil fica separada do Chrome normal.
+Não é necessário Playwright nesta versão.
 
 ## Execução
-
-Com o ambiente virtual ativado:
 
 ```powershell
 python main.py
 ```
 
-O programa:
+Depois de iniciar:
 
-1. carrega `dados/aulas.csv`;
-2. identifica os registros pendentes;
-3. mostra no terminal o primeiro registro;
-4. conecta ao Chrome via CDP;
-5. espera 1,5 segundo para você deixar o Portal em primeiro plano;
-6. procura `Editar` diretamente no DOM;
-7. clica em `Editar`;
-8. preenche o modal usando as coordenadas;
-9. clica em `Previsto`;
-10. arrasta o scroll;
-11. preenche Metodologia e Recursos;
-12. não clica em Salvar enquanto `MODO_TESTE = True`.
+1. posicione o painel em um canto conveniente da tela;
+2. abra a aula desejada no Portal;
+3. clique manualmente em **Editar**;
+4. confirme o número correspondente no painel;
+5. clique **INSERIR ESTA AULA**;
+6. confira o preenchimento;
+7. salve manualmente no Portal;
+8. clique **PRÓXIMA**.
 
-## Teste inicial
+## Modo de teste
 
-Mantenha:
+Em `config.py`:
 
 ```python
 MODO_TESTE = True
 ```
 
-Assim o botão Salvar nunca será clicado e o registro não será marcado como OK.
+Nesse modo o programa preenche os campos, mas não clica no botão Salvar.
 
-## Identificação da linha
-
-A versão atual aceita duas estratégias.
-
-### CSV com data/turma/aula
-
-Se o CSV possuir:
-
-```text
-data
-turma
-aula
-```
-
-o programa tenta localizar a `<tr>` correspondente e clicar no `Editar` daquela linha.
-
-### CSV atual
-
-O CSV enviado nesta versão contém:
-
-```text
-tipo de aula
-conteúdo previsto
-lição de casa
-observação
-```
-
-Como não existem data/turma/aula, o programa utiliza o índice configurado em:
+Para automatizar o salvamento futuramente:
 
 ```python
-EDITAR_INDICE_FALLBACK = 0
+MODO_TESTE = False
 ```
 
-Para o primeiro teste, `0` significa o primeiro botão `Editar` encontrado no DOM.
+Recomenda-se manter `True` durante os primeiros testes.
 
-## Segurança
+## Coordenadas
 
-`pyautogui.FAILSAFE` está ativo.
+As coordenadas do formulário continuam em `config.py`:
 
-Para interromper uma ação de PyAutoGUI, mova o mouse para o canto superior esquerdo.
+```python
+CAMPOS = {
+    "titulo": (...),
+    "conteudo": (...),
+    "previsto": (...),
+    "metodologia": (...),
+    "recursos": (...),
+    "scroll_start": (...),
+    "scroll_end": (...),
+    "salvar": (...),
+}
+```
 
-Não altere `MODO_TESTE` para `False` até confirmar visualmente todo o fluxo.
+Elas devem corresponder à resolução/escala da tela usada no Portal.
+
+## Observação importante
+
+A v0.3 assume que o usuário abriu manualmente o formulário correto antes de clicar em **INSERIR ESTA AULA**. O programa não verifica qual aula está aberta no Portal.
+
+Isso é intencional: reduz a complexidade e torna o fluxo mais previsível para o MVP.
