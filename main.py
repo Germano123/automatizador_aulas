@@ -44,16 +44,20 @@ def atualizar_status(indice, status, erro=""):
 
 def executar_insercao(indice, aula, callback):
     """Executa PyAutoGUI em thread para não congelar a GUI."""
+
     def trabalho():
         try:
             preencher_aula(aula)
             atualizar_status(indice, "preenchida", "")
+            # Tkinter deve ser atualizado na thread principal.
             callback(True, "")
         except Exception as erro:
-            atualizar_status(indice, "erro", str(erro))
+            try:
+                atualizar_status(indice, "erro", str(erro))
+            except Exception:
+                pass
             callback(False, str(erro))
 
-    # A GUI continua responsiva durante a automação.
     threading.Thread(target=trabalho, daemon=True).start()
 
 
@@ -65,15 +69,16 @@ def main():
 
     root = tk.Tk()
 
-    # A janela fica sempre acima das demais aplicações, mas não força foco.
     if config.GUI_SEMPRE_NO_TOPO:
         root.attributes("-topmost", True)
 
     painel = PainelPlanos(root, aulas, executar_insercao)
 
-    # O painel aparece acima do Portal inicialmente.
     root.lift()
-    root.after(100, lambda: root.attributes("-topmost", config.GUI_SEMPRE_NO_TOPO))
+    root.after(
+        100,
+        lambda: root.attributes("-topmost", config.GUI_SEMPRE_NO_TOPO)
+    )
 
     root.mainloop()
 

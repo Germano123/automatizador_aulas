@@ -126,7 +126,6 @@ class PainelPlanos:
         )
         self.btn_ocultar.pack()
 
-        # Atalhos enquanto a GUI estiver em foco.
         self.root.bind("<Left>", lambda _event: self.anterior())
         self.root.bind("<Right>", lambda _event: self.proxima())
         self.root.bind("<Return>", lambda _event: self.inserir())
@@ -146,17 +145,34 @@ class PainelPlanos:
         self.tipo.config(text=aula.get("tipo de aula", "Sem título"))
 
         if self.indice in self.processadas:
-            self.status.config(text="✓ Esta aula já foi inserida.", fg="#35C98A")
+            self.status.config(
+                text="✓ Esta aula já foi inserida.",
+                fg="#35C98A",
+            )
+        elif self.executando:
+            self.status.config(
+                text="Preenchendo o formulário...",
+                fg="#FFD15C",
+            )
         else:
-            self.status.config(text="Pronto — abra o Editar no Portal e clique em INSERIR.", fg="#BFC4CC")
+            self.status.config(
+                text="Pronto — abra o Editar no Portal e clique em INSERIR.",
+                fg="#BFC4CC",
+            )
 
         self.btn_anterior.config(
-            state="normal" if self.indice > 0 and not self.executando else "disabled"
+            state="normal"
+            if self.indice > 0 and not self.executando
+            else "disabled"
         )
         self.btn_proxima.config(
-            state="normal" if self.indice < total - 1 and not self.executando else "disabled"
+            state="normal"
+            if self.indice < total - 1 and not self.executando
+            else "disabled"
         )
-        self.btn_inserir.config(state="disabled" if self.executando else "normal")
+        self.btn_inserir.config(
+            state="disabled" if self.executando else "normal"
+        )
 
     def anterior(self):
         if self.indice > 0 and not self.executando:
@@ -174,15 +190,25 @@ class PainelPlanos:
 
         aula = self.aula_atual()
         self.executando = True
-        self.status.config(text="Preenchendo o formulário...", fg="#FFD15C")
         self.atualizar()
 
         try:
-            self.on_inserir(self.indice, aula, self._resultado)
+            self.on_inserir(
+                self.indice,
+                aula,
+                lambda sucesso=True, mensagem="": self.root.after(
+                    0,
+                    lambda: self._resultado(sucesso, mensagem),
+                ),
+            )
         except Exception as erro:
             self.executando = False
             self.atualizar()
-            messagebox.showerror("Erro ao inserir aula", str(erro), parent=self.root)
+            messagebox.showerror(
+                "Erro ao inserir aula",
+                str(erro),
+                parent=self.root,
+            )
 
     def _resultado(self, sucesso=True, mensagem=""):
         self.executando = False
@@ -194,7 +220,10 @@ class PainelPlanos:
                 fg="#35C98A",
             )
         else:
-            self.status.config(text=f"Erro: {mensagem}", fg="#FF6B4A")
+            self.status.config(
+                text=f"Erro: {mensagem}",
+                fg="#FF6B4A",
+            )
 
         self.atualizar()
 

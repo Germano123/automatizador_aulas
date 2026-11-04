@@ -1,106 +1,77 @@
-# Automatizador de Planos de Aula — v0.3
+# Automatizador de Planos de Aula — v0.3.1
 
-## Nova abordagem
+## Objetivo
 
-A versão 0.3 abandona a tentativa de localizar automaticamente o botão **Editar** no Portal.
+Nesta versão, o usuário localiza manualmente a aula no Portal do Professor,
+clica em **Editar** e depois usa a GUI para inserir os dados da linha atual do CSV.
 
-O processo agora é deliberadamente híbrido:
+O programa não procura mais o botão Editar.
 
-1. O usuário abre o Portal do Professor.
-2. Localiza visualmente a aula correta.
-3. Clica manualmente em **Editar**.
-4. Usa o painel flutuante do automatizador para selecionar a aula correspondente.
-5. Clica em **INSERIR ESTA AULA**.
-6. O PyAutoGUI preenche o formulário aberto.
-7. O usuário confere o resultado e salva manualmente no Portal.
-8. O usuário clica em **PRÓXIMA** e repete o processo.
+## Correções desta versão
 
-## GUI flutuante
+1. A linha atual do CSV é explicitamente lida e enviada para `preencher_aula()`.
+2. O terminal mostra os valores que serão inseridos.
+3. Cada campo faz:
+   - clique;
+   - espera;
+   - `Ctrl+A`;
+   - colagem via clipboard;
+   - espera.
+4. O arraste do scrollbar agora é explícito:
+   - `moveTo`;
+   - `mouseDown`;
+   - `moveTo` com duração;
+   - `mouseUp`.
+5. A GUI não é atualizada diretamente pela thread do PyAutoGUI; o resultado retorna à thread principal do Tkinter.
+6. O salvamento continua desativado enquanto `MODO_TESTE = True`.
 
-A GUI foi construída com Tkinter e possui:
-
-- número da aula atual e total de aulas;
-- descrição/tipo da aula;
-- botão **Anterior**;
-- botão **Próxima**;
-- botão **Inserir esta aula**;
-- status da operação;
-- botão para ocultar o painel.
-
-A janela utiliza `-topmost`, permanecendo acima do Portal e de outras aplicações. Ela não força o foco continuamente. Assim, é possível clicar e trabalhar no Portal enquanto o painel continua visível.
-
-## Atalhos
-
-Quando o painel estiver com foco:
-
-- `←` = aula anterior
-- `→` = próxima aula
-- `Enter` = inserir aula
-
-## Dependências
+## Instalação
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-Não é necessário Playwright nesta versão.
-
 ## Execução
+
+Abra o Portal, localize a aula desejada e clique manualmente em **Editar**.
+
+Depois:
 
 ```powershell
 python main.py
 ```
 
-Depois de iniciar:
+Na GUI, escolha a aula correspondente e clique em:
 
-1. posicione o painel em um canto conveniente da tela;
-2. abra a aula desejada no Portal;
-3. clique manualmente em **Editar**;
-4. confirme o número correspondente no painel;
-5. clique **INSERIR ESTA AULA**;
-6. confira o preenchimento;
-7. salve manualmente no Portal;
-8. clique **PRÓXIMA**.
+**INSERIR ESTA AULA**
 
-## Modo de teste
+## Importante
 
-Em `config.py`:
+As coordenadas em `config.py` são coordenadas absolutas da tela:
+
+```python
+CAMPOS = {
+    "titulo": ...,
+    "conteudo": ...,
+    "previsto": ...,
+    "metodologia": ...,
+    "recursos": ...,
+    "scroll_start": ...,
+    "scroll_end": ...,
+}
+```
+
+Se o mouse chegar ao campo mas o conteúdo não for inserido, verifique
+primeiramente se a coordenada realmente está dentro da área editável.
+
+## Modo teste
+
+O padrão é:
 
 ```python
 MODO_TESTE = True
 ```
 
-Nesse modo o programa preenche os campos, mas não clica no botão Salvar.
+Portanto o programa preenche, mas não clica em Salvar.
 
-Para automatizar o salvamento futuramente:
-
-```python
-MODO_TESTE = False
-```
-
-Recomenda-se manter `True` durante os primeiros testes.
-
-## Coordenadas
-
-As coordenadas do formulário continuam em `config.py`:
-
-```python
-CAMPOS = {
-    "titulo": (...),
-    "conteudo": (...),
-    "previsto": (...),
-    "metodologia": (...),
-    "recursos": (...),
-    "scroll_start": (...),
-    "scroll_end": (...),
-    "salvar": (...),
-}
-```
-
-Elas devem corresponder à resolução/escala da tela usada no Portal.
-
-## Observação importante
-
-A v0.3 assume que o usuário abriu manualmente o formulário correto antes de clicar em **INSERIR ESTA AULA**. O programa não verifica qual aula está aberta no Portal.
-
-Isso é intencional: reduz a complexidade e torna o fluxo mais previsível para o MVP.
+Não altere para `False` até o preenchimento estar validado.
